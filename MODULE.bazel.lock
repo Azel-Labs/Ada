@@ -3260,8 +3260,8 @@
         "bzlTransitiveDigest": "r9+Mc5F2Do2kIyRp48TkY7Gmkr3pN6LTrL1/J9n0/es=",
         "usagesDigest": "gdEfUjxtHLBH/tr0jWUr/2DNx3loTlyK7aIiv/ChL9Q=",
         "recordedFileInputs": {
-          "@@//Cargo.lock": "80ec084aab6b40a4709dcb6c85de8e15e177bd4400021b6756176cb99c0d8bc9",
-          "@@//Cargo.toml": "d4abbc9fd90e1cd9bff7c9f075538926cf7f99afcac7a4ce715d88c7c4745ffd"
+          "@@//Cargo.lock": "1514ff899c6d0fa26e707d4e09999b982fed99981989d4fde97dc3a7c244c50d",
+          "@@//Cargo.toml": "eb68c370cb799178db7702a672638270fd33c9d3adf7febdf329b37e7fede85a"
         },
         "recordedDirentsInputs": {},
         "envVariables": {

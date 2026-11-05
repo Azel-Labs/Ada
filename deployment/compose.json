@@ -7,7 +7,7 @@
       "env_file": [{"path": "/mnt/config/secrets.env", "required": true, "format": "raw"}],
       "environment": {
         "ADA_BIND_ADDRESS": "0.0.0.0:8443",
-        "ADA_TLS_DOMAIN": "api.cypherpunklabs.io",
+        "ADA_TLS_DOMAIN": "api.azellabs.io",
         "ADA_TDX_REPORT_DIR": "/run/ada/tdx-report",
         "ADA_ATTESTATION_DIR": "/run/ada/attestation",
         "DOCUMENT_ROUTER_SOCKET": null,
