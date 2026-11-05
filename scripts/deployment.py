@@ -14,7 +14,7 @@ import sys
 import tarfile
 
 ROOT = Path(__file__).resolve().parents[1]
-OS_REPOSITORY = 'CypherpunkLabs-AI/Ada-image'
+OS_REPOSITORY = 'Azel-Labs/Ada-image'
 PROFILE = 'gcp-tdx-platform-profile.json'
 PROOFS = ('release.json', 'image-release.json', 'release.sigstore.json')
 DEPLOYMENT_FILES = ('deployment-gcp.tar.gz', 'deployment.efi', 'cmdline', 'workload.tar',

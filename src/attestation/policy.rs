@@ -10,7 +10,7 @@ use std::{
 use tokio::sync::Mutex;
 
 const URL: &str =
-    "https://github.com/CypherpunkLabs-AI/Ada/releases/download/ada-policy/policy-envelope.json";
+    "https://github.com/Azel-Labs/Ada/releases/download/ada-policy/policy-envelope.json";
 const MAX_BYTES: usize = 2 * 1024 * 1024;
 struct Cached {
     fetched: Instant,

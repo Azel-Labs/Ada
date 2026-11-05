@@ -17,7 +17,7 @@ def data(*args):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--repository', default='CypherpunkLabs-AI/Ada')
+    parser.add_argument('--repository', default='Azel-Labs/Ada')
     parser.add_argument('--project', default='cypherpunklabs')
     args = parser.parse_args()
     if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', args.repository):
