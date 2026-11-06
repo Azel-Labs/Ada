@@ -4,14 +4,14 @@
       "allow_cached_keys": false,
       "allow_dynamic_platform": true,
       "allow_smt": true,
-      "image_release_sha256": "bf93c49c5ff53ab2dd982ad90dce4c00d43d9e1a587efa5a6916a67b56918120",
-      "release_sha256": "e6721881b4e328e4cc460580edd22d60b99c9fe0a12da0155bc915206466ee86",
-      "sequence": 6,
-      "source_commit": "e1bccc0d007dd5e31665a9c7ca952a46b6e15f32",
-      "tag": "v0.2.0"
+      "image_release_sha256": "acd36a50219c41cf822463c1b36dd4e973b22d0d1268affec2ffe80c7fd91b8e",
+      "release_sha256": "a41446080aa346ffbf9d14f9fdbe2ddb512af902bfb7c8a580dc765db5df741f",
+      "sequence": 7,
+      "source_commit": "91760624eaf8f0d1b0f590911d494837786b8a24",
+      "tag": "v0.2.1"
     }
   ],
-  "endpoint": "wss://api.cypherpunklabs.io/v1/session",
+  "endpoint": "wss://api.azellabs.io/v1/session",
   "gcp_instance": {
     "instance_id": "6981755009540883484",
     "project_number": "1069855069526",
@@ -20,20 +20,20 @@
   "max_challenge_age_seconds": 120,
   "max_policy_age_seconds": 259200,
   "max_recipient_age_seconds": 300,
-  "minimum_release_sequence": 6,
+  "minimum_release_sequence": 7,
   "policy_id": "ada.gcp-tdx.production.v1",
-  "policy_repository": "CypherpunkLabs-AI/Ada",
+  "policy_repository": "Azel-Labs/Ada",
   "policy_workflow": ".github/workflows/client-policy.yml",
   "publishers": {
     "ada": {
       "owner_id": 325408208,
-      "repository": "CypherpunkLabs-AI/Ada",
+      "repository": "Azel-Labs/Ada",
       "repository_id": 1420000485,
       "workflow": ".github/workflows/ci.yml"
     },
     "ada-image": {
       "owner_id": 325408208,
-      "repository": "CypherpunkLabs-AI/Ada-image",
+      "repository": "Azel-Labs/Ada-image",
       "repository_id": 1418755587,
       "workflow": ".github/workflows/image.yml"
     }
