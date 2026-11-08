@@ -9,9 +9,25 @@ use std::{
 };
 use tokio::sync::Mutex;
 
-const URL: &str =
-    "https://github.com/Azel-Labs/Ada/releases/download/ada-policy/policy-envelope.json";
+const RELEASE_URL: &str = "https://api.github.com/repos/Azel-Labs/Ada/releases/tags/ada-policy";
+const ASSET_BASE_URL: &str = "https://api.github.com/repos/Azel-Labs/Ada/releases/assets/";
 const MAX_BYTES: usize = 2 * 1024 * 1024;
+// Two API requests per refresh stay below GitHub's unauthenticated rate limit.
+const REFRESH_INTERVAL: Duration = Duration::from_secs(300);
+
+#[derive(serde::Deserialize)]
+struct Release {
+    assets: Vec<Asset>,
+}
+
+#[derive(serde::Deserialize)]
+struct Asset {
+    id: u64,
+    name: String,
+    state: String,
+    size: u64,
+}
+
 struct Cached {
     fetched: Instant,
     bytes: Vec<u8>,
@@ -21,21 +37,62 @@ static CACHE: OnceLock<Mutex<Option<Cached>>> = OnceLock::new();
 async fn load() -> anyhow::Result<Vec<u8>> {
     let mut cache = CACHE.get_or_init(|| Mutex::new(None)).lock().await;
     if let Some(cached) = &*cache
-        && cached.fetched.elapsed() < Duration::from_secs(30)
+        && cached.fetched.elapsed() < REFRESH_INTERVAL
     {
         return Ok(cached.bytes.clone());
     }
     let client = reqwest::Client::builder()
+        .user_agent("Ada-policy-delivery")
         .timeout(Duration::from_secs(10))
         .redirect(reqwest::redirect::Policy::limited(3))
         .https_only(true)
         .build()?;
-    let mut response = client
-        .get(URL)
-        .header("Accept", "application/json")
+    let metadata = client
+        .get(RELEASE_URL)
+        .header("Accept", "application/vnd.github+json")
+        .header("X-GitHub-Api-Version", "2022-11-28")
         .send()
         .await?
         .error_for_status()?;
+    let release: Release = serde_json::from_slice(&read_bounded(metadata).await?)?;
+    let mut assets = release
+        .assets
+        .into_iter()
+        .filter(|asset| asset.name == "policy-envelope.json");
+    let asset = assets
+        .next()
+        .ok_or_else(|| anyhow::anyhow!("policy release asset missing"))?;
+    anyhow::ensure!(
+        assets.next().is_none()
+            && asset.id > 0
+            && asset.state == "uploaded"
+            && asset.size > 0
+            && asset.size <= MAX_BYTES as u64,
+        "invalid policy release asset"
+    );
+    // Build the URL from a numeric ID; never follow a metadata-supplied URL.
+    let response = client
+        .get(format!("{ASSET_BASE_URL}{}", asset.id))
+        .header("Accept", "application/octet-stream")
+        .header("X-GitHub-Api-Version", "2022-11-28")
+        .send()
+        .await?
+        .error_for_status()?;
+    let bytes = read_bounded(response).await?;
+    anyhow::ensure!(
+        bytes.len() as u64 == asset.size,
+        "policy asset size mismatch"
+    );
+    // These are still untrusted bytes. The client authenticates the policy and
+    // enforces expiration, release approval and rollback protection as before.
+    *cache = Some(Cached {
+        fetched: Instant::now(),
+        bytes: bytes.clone(),
+    });
+    Ok(bytes)
+}
+
+async fn read_bounded(mut response: reqwest::Response) -> anyhow::Result<Vec<u8>> {
     anyhow::ensure!(
         response
             .content_length()
@@ -48,10 +105,6 @@ async fn load() -> anyhow::Result<Vec<u8>> {
         bytes.extend_from_slice(&chunk);
     }
     anyhow::ensure!(!bytes.is_empty(), "empty policy");
-    *cache = Some(Cached {
-        fetched: Instant::now(),
-        bytes: bytes.clone(),
-    });
     Ok(bytes)
 }
 
@@ -61,7 +114,18 @@ pub async fn get() -> Response<Body> {
     let result = tokio::time::timeout(Duration::from_secs(12), load()).await;
     let (status, bytes) = match result {
         Ok(Ok(bytes)) => (StatusCode::OK, bytes),
-        _ => (StatusCode::SERVICE_UNAVAILABLE, Vec::new()),
+        Ok(Err(error)) => {
+            let status = error
+                .downcast_ref::<reqwest::Error>()
+                .and_then(reqwest::Error::status)
+                .map(|status| status.as_u16());
+            tracing::warn!(upstream_status = ?status, "Signed policy download failed");
+            (StatusCode::SERVICE_UNAVAILABLE, Vec::new())
+        }
+        Err(_) => {
+            tracing::warn!("Signed policy download timed out");
+            (StatusCode::SERVICE_UNAVAILABLE, Vec::new())
+        }
     };
     let mut response = Response::new(Body::from(bytes));
     *response.status_mut() = status;
