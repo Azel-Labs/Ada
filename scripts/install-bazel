@@ -9,8 +9,8 @@ destination="${1:?usage: scripts/install-bazel DESTINATION_DIRECTORY}"
 mkdir -p -- "$destination"
 temporary="$(mktemp -d)"
 trap 'rm -rf -- "$temporary"' EXIT
-curl --fail --location --retry 3 --proto '=https' --tlsv1.2 \
-    "https://github.com/bazelbuild/bazel/releases/download/$version/bazel-$version-linux-x86_64" \
+curl --fail --location --retry 3 --connect-timeout 15 --max-time 120 --proto '=https' --tlsv1.2 \
+    "https://releases.bazel.build/$version/release/bazel-$version-linux-x86_64" \
     --output "$temporary/bazel"
 printf '%s  %s\n' \
     '61d89402f0368e64b6c827be5de79d8e65382e8124c3cbb97325611a1851392e' \
