@@ -9,7 +9,10 @@ rust_library(
     crate_root = "src/lib.rs",
     srcs = glob(["src/**/*.rs"], exclude = ["src/main.rs"]),
     edition = "2024",
-    compile_data = glob(["src/attestation/testdata/*"]) + ["src/inference/upstream/nearai-publishers.json"],
+    compile_data = glob(["src/attestation/testdata/*"]) + [
+        "src/inference/upstream/nearai-publishers.json",
+        "src/inference/upstream/nearai-launcher-index.json",
+    ],
     aliases = aliases(),
     deps = all_crate_deps(normal = True) + [
         "@oak//oak_session:oak_session",

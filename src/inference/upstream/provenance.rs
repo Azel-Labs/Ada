@@ -120,15 +120,16 @@ async fn verify_image(repository: &str, digest: &str) -> Result<(), Verification
     if cache.contains_key(&key) {
         return Ok(());
     }
+    let signed_digest = signed_image_digest(repository, digest)?;
     tokio::time::timeout(Duration::from_secs(30), async {
-        let bundles = fetch_image_provenance(&policy.repository, digest, None)
+        let bundles = fetch_image_provenance(&policy.repository, &signed_digest, None)
             .await
             .map_err(|source| VerificationError::ImageProvenanceRequestFailed {
                 image_repository: repository.to_owned(),
                 digest: digest.to_owned(),
                 source: Box::new(source),
             })?;
-        verify_image_provenance(&bundles, digest, policy).await
+        verify_image_provenance(&bundles, &signed_digest, policy).await
     })
     .await
     .map_err(rejected)??;
@@ -143,6 +144,34 @@ async fn verify_image(repository: &str, digest: &str) -> Result<(), Verification
     }
     cache.insert(key, Instant::now());
     Ok(())
+}
+
+// NEAR's production launcher is pinned to a platform manifest, while its
+// GitHub build proof signs the containing OCI index. These are original index
+// bytes from the registry, not an approval: its computed digest must still pass
+// the SDK's Sigstore verification with the existing publisher policy.
+const LAUNCHER_INDEX: &[u8] = include_bytes!("nearai-launcher-index.json");
+
+fn signed_image_digest(repository: &str, digest: &str) -> Result<String, VerificationError> {
+    if repository != MODEL {
+        return Ok(digest.to_owned());
+    }
+    let index: serde_json::Value = serde_json::from_slice(LAUNCHER_INDEX).map_err(rejected)?;
+    require(index["schemaVersion"] == 2)?;
+    require(index["mediaType"] == "application/vnd.oci.image.index.v1+json")?;
+    let manifests = index["manifests"].as_array().ok_or_else(rejection)?;
+    if manifests.iter().any(|manifest| {
+        manifest["digest"].as_str() == Some(digest)
+            && manifest["mediaType"] == "application/vnd.oci.image.manifest.v1+json"
+            && manifest["platform"]["os"] == "linux"
+            && manifest["platform"]["architecture"] == "amd64"
+    }) {
+        return Ok(format!(
+            "sha256:{}",
+            hex::encode(Sha256::digest(LAUNCHER_INDEX))
+        ));
+    }
+    Ok(digest.to_owned())
 }
 
 fn rejection() -> VerificationError {
@@ -160,6 +189,20 @@ fn require(condition: bool) -> Result<(), VerificationError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn launcher_child_requires_the_signed_parent_index() {
+        let child = "sha256:079a14b41deb11e0e27f9b69648e8b3d89bd6fb9ccf6071643b8f447fa415085";
+        assert_eq!(
+            signed_image_digest(MODEL, child).unwrap(),
+            "sha256:91fdff3cfa3543d72656b2368c7d8a0a83d95a0f1087378c897aa1537acdba56"
+        );
+        assert_eq!(signed_image_digest(GATEWAY, child).unwrap(), child);
+        let other = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
+        assert_eq!(signed_image_digest(MODEL, other).unwrap(), other);
+        let evidence = "sha256:c3e4bbb110835c63ed355bba05b9dbd6b127f44d1b509c32025f79c6a622e1f2";
+        assert_eq!(signed_image_digest(MODEL, evidence).unwrap(), evidence);
+    }
 
     #[derive(serde::Deserialize)]
     struct PublishedBuild {
