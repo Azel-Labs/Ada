@@ -31,7 +31,7 @@ struct Asset {
 }
 
 struct Cached {
-    fetched: Instant,
+    fetched: Option<Instant>,
     bytes: Vec<u8>,
 }
 static CACHE: OnceLock<Mutex<Option<Cached>>> = OnceLock::new();
@@ -53,22 +53,25 @@ async fn load() -> anyhow::Result<Vec<u8>> {
         .await?;
         if let Ok(bytes) = seed {
             *cache = Some(Cached {
-                fetched: Instant::now() - REFRESH_INTERVAL,
+                fetched: None,
                 bytes,
             });
         }
     }
     if let Some(cached) = &mut *cache {
-        if cached.fetched.elapsed() >= REFRESH_INTERVAL {
+        if cached
+            .fetched
+            .is_none_or(|fetched| fetched.elapsed() >= REFRESH_INTERVAL)
+        {
             // Serve the signed snapshot immediately while one refresh runs.
             // Failed refreshes keep the snapshot and wait before retrying.
-            cached.fetched = Instant::now();
+            cached.fetched = Some(Instant::now());
             tokio::spawn(async {
                 match download().await {
                     Ok(bytes) => {
                         *CACHE.get().expect("policy cache initialized").lock().await =
                             Some(Cached {
-                                fetched: Instant::now(),
+                                fetched: Some(Instant::now()),
                                 bytes,
                             });
                     }
@@ -80,7 +83,7 @@ async fn load() -> anyhow::Result<Vec<u8>> {
     }
     let bytes = download().await?;
     *cache = Some(Cached {
-        fetched: Instant::now(),
+        fetched: Some(Instant::now()),
         bytes: bytes.clone(),
     });
     Ok(bytes)
