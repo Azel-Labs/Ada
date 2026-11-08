@@ -4,11 +4,11 @@
       "allow_cached_keys": false,
       "allow_dynamic_platform": true,
       "allow_smt": true,
-      "image_release_sha256": "4a23dcd59891d98c4dc0024277585ebd7d60794a42b78389f90e33cc5f49fbeb",
-      "release_sha256": "4d7b01bae567fa76dbc13e89db29dea626426033591cb726ebf684b6a68c6888",
-      "sequence": 8,
-      "source_commit": "010a8973f43faf81fc718d1ad1ec79a68381e633",
-      "tag": "v0.2.2"
+      "image_release_sha256": "42e23f34254d9802cecc7a7c3469fafb422f70f8515650ddbd4ba7afab3207ce",
+      "release_sha256": "68d36761c3ca48e818d1728037786c2444f07e4bc6290c7117da1b8c2a26c529",
+      "sequence": 9,
+      "source_commit": "8945e57a151ce35cf9362cf41d82ff365331108d",
+      "tag": "v0.2.3"
     }
   ],
   "endpoint": "wss://api.azellabs.io/v1/session",
@@ -20,7 +20,7 @@
   "max_challenge_age_seconds": 120,
   "max_policy_age_seconds": 259200,
   "max_recipient_age_seconds": 300,
-  "minimum_release_sequence": 8,
+  "minimum_release_sequence": 9,
   "policy_id": "ada.gcp-tdx.production.v1",
   "policy_repository": "Azel-Labs/Ada",
   "policy_workflow": ".github/workflows/client-policy.yml",
