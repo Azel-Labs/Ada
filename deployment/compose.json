@@ -14,6 +14,7 @@
         "RUST_LOG": "ada_proxy=info"
       },
       "volumes": [
+        {"type": "bind", "source": "/mnt/config/policy-envelope.json", "target": "/run/ada/policy-envelope.json", "read_only": true, "bind": {"create_host_path": false}},
         {"type": "bind", "source": "/run/ada/tls", "target": "/run/ada/tls", "bind": {"create_host_path": false}},
         {"type": "bind", "source": "/run/ada/tdx-report", "target": "/run/ada/tdx-report", "bind": {"create_host_path": false}},
         {"type": "bind", "source": "/run/ada/attestation", "target": "/run/ada/attestation", "read_only": true, "bind": {"create_host_path": false}}

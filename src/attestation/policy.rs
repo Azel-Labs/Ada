@@ -4,6 +4,7 @@ use axum::{
     http::{HeaderValue, Response, StatusCode},
 };
 use std::{
+    io::Read,
     sync::OnceLock,
     time::{Duration, Instant},
 };
@@ -11,9 +12,10 @@ use tokio::sync::Mutex;
 
 const RELEASE_URL: &str = "https://api.github.com/repos/Azel-Labs/Ada/releases/tags/ada-policy";
 const ASSET_BASE_URL: &str = "https://api.github.com/repos/Azel-Labs/Ada/releases/assets/";
+const SEED_PATH: &str = "/run/ada/policy-envelope.json";
 const MAX_BYTES: usize = 2 * 1024 * 1024;
 // Two API requests per refresh stay below GitHub's unauthenticated rate limit.
-const REFRESH_INTERVAL: Duration = Duration::from_secs(300);
+const REFRESH_INTERVAL: Duration = Duration::from_mins(5);
 
 #[derive(serde::Deserialize)]
 struct Release {
@@ -36,11 +38,59 @@ static CACHE: OnceLock<Mutex<Option<Cached>>> = OnceLock::new();
 
 async fn load() -> anyhow::Result<Vec<u8>> {
     let mut cache = CACHE.get_or_init(|| Mutex::new(None)).lock().await;
-    if let Some(cached) = &*cache
-        && cached.fetched.elapsed() < REFRESH_INTERVAL
-    {
+    if cache.is_none() {
+        let seed = tokio::task::spawn_blocking(|| -> anyhow::Result<Vec<u8>> {
+            let mut bytes = Vec::new();
+            std::fs::File::open(SEED_PATH)?
+                .take(MAX_BYTES as u64 + 1)
+                .read_to_end(&mut bytes)?;
+            anyhow::ensure!(
+                !bytes.is_empty() && bytes.len() <= MAX_BYTES,
+                "policy seed size limit"
+            );
+            Ok(bytes)
+        })
+        .await?;
+        if let Ok(bytes) = seed {
+            *cache = Some(Cached {
+                fetched: Instant::now() - REFRESH_INTERVAL,
+                bytes,
+            });
+        }
+    }
+    if let Some(cached) = &mut *cache {
+        if cached.fetched.elapsed() >= REFRESH_INTERVAL {
+            // Serve the signed snapshot immediately while one refresh runs.
+            // Failed refreshes keep the snapshot and wait before retrying.
+            cached.fetched = Instant::now();
+            tokio::spawn(async {
+                match download().await {
+                    Ok(bytes) => {
+                        *CACHE.get().expect("policy cache initialized").lock().await =
+                            Some(Cached {
+                                fetched: Instant::now(),
+                                bytes,
+                            });
+                    }
+                    Err(error) => log_download_error(&error),
+                }
+            });
+        }
         return Ok(cached.bytes.clone());
     }
+    let bytes = download().await?;
+    *cache = Some(Cached {
+        fetched: Instant::now(),
+        bytes: bytes.clone(),
+    });
+    Ok(bytes)
+}
+
+async fn download() -> anyhow::Result<Vec<u8>> {
+    tokio::time::timeout(Duration::from_secs(10), fetch()).await?
+}
+
+async fn fetch() -> anyhow::Result<Vec<u8>> {
     let client = reqwest::Client::builder()
         .user_agent("Ada-policy-delivery")
         .timeout(Duration::from_secs(10))
@@ -85,10 +135,6 @@ async fn load() -> anyhow::Result<Vec<u8>> {
     );
     // These are still untrusted bytes. The client authenticates the policy and
     // enforces expiration, release approval and rollback protection as before.
-    *cache = Some(Cached {
-        fetched: Instant::now(),
-        bytes: bytes.clone(),
-    });
     Ok(bytes)
 }
 
@@ -115,11 +161,7 @@ pub async fn get() -> Response<Body> {
     let (status, bytes) = match result {
         Ok(Ok(bytes)) => (StatusCode::OK, bytes),
         Ok(Err(error)) => {
-            let status = error
-                .downcast_ref::<reqwest::Error>()
-                .and_then(reqwest::Error::status)
-                .map(|status| status.as_u16());
-            tracing::warn!(upstream_status = ?status, "Signed policy download failed");
+            log_download_error(&error);
             (StatusCode::SERVICE_UNAVAILABLE, Vec::new())
         }
         Err(_) => {
@@ -134,4 +176,12 @@ pub async fn get() -> Response<Body> {
     headers.insert("access-control-allow-origin", HeaderValue::from_static("*"));
     headers.insert("cache-control", HeaderValue::from_static("no-store"));
     response
+}
+
+fn log_download_error(error: &anyhow::Error) {
+    let status = error
+        .downcast_ref::<reqwest::Error>()
+        .and_then(reqwest::Error::status)
+        .map(|status| status.as_u16());
+    tracing::warn!(upstream_status = ?status, "Signed policy refresh failed; client policy validation remains required");
 }
