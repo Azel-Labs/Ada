@@ -64,7 +64,8 @@ struct JwksCache {
 #[derive(Debug, Deserialize)]
 struct Claims {
     sub: String,
-    azp: String,
+    // Clerk native sessions can omit azp because they have no browser Origin.
+    azp: Option<String>,
     #[allow(dead_code)]
     sid: Option<String>,
     #[allow(dead_code)]
@@ -167,12 +168,15 @@ impl JwtVerifier {
             Err(_) => return Err(VerifyError::Invalid),
         };
 
-        if !self
-            .inner
-            .authorized_parties
-            .iter()
-            .any(|party| party == &claims.azp)
-            || !valid_user_id(&claims.sub)
+        // This verifier accepts explicit Bearer tokens only, never cookies.
+        // Enforce the origin allowlist whenever Clerk includes an origin claim.
+        if claims.azp.as_ref().is_some_and(|azp| {
+            !self
+                .inner
+                .authorized_parties
+                .iter()
+                .any(|party| party == azp)
+        }) || !valid_user_id(&claims.sub)
         {
             return Err(VerifyError::Invalid);
         }
