@@ -10,7 +10,7 @@ use nearai_inference_sdk::{
 };
 use serde_json::Value;
 use std::{
-    collections::{BTreeSet, HashMap},
+    collections::HashMap,
     pin::Pin,
     sync::{Arc, OnceLock},
     time::{Duration, Instant},
@@ -151,13 +151,9 @@ impl InferenceBackend {
                         == DeploymentProvenanceStatus::Verified),
             "NEAR software provenance required"
         );
-        let mut signers = BTreeSet::new();
-        for candidate in &attestation.models {
-            ensure!(
-                signers.insert(signer_identity(&candidate.evidence.signer)),
-                "NEAR model candidates have an ambiguous signer"
-            );
-        }
+        // NEAR replicas may share a model key. The SDK verifies every candidate,
+        // pins the selected key for E2EE and verifies the response's signer.
+        // A shared signer does not identify one particular serving instance.
         ensure!(
             preflight_started.elapsed() < PREFLIGHT_TIMEOUT,
             "NEAR evidence expired before inference dispatch"
@@ -273,15 +269,8 @@ fn matches_preflight(
         VerifiedCompletionAttestation::Gateway(gateway) => gateway == &preflight.gateway,
         VerifiedCompletionAttestation::Model(model) => {
             preflight.models.contains(model)
-                && preflight
-                    .models
-                    .iter()
-                    .filter(|candidate| {
-                        signer_identity(&candidate.evidence.signer)
-                            == signer_identity(&result.signature.signer)
-                    })
-                    .count()
-                    == 1
+                && signer_identity(&model.evidence.signer)
+                    == signer_identity(&result.signature.signer)
         }
         VerifiedCompletionAttestation::Direct(_) => false,
     };
