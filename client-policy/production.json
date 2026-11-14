@@ -4,6 +4,16 @@
       "allow_cached_keys": false,
       "allow_dynamic_platform": true,
       "allow_smt": true,
+      "image_release_sha256": "f6ffa5b480a15e91381e28c7781eade374eb70b8b1569a65d08d5a00146a5f32",
+      "release_sha256": "f3cbd76f92a6bd82cba6ce8fd072b907452b563e30406139b79b7b3ff50d85b7",
+      "sequence": 11,
+      "source_commit": "265a47550e445ac29998eb9c01b9b8f5a28c7592",
+      "tag": "v0.2.5"
+    },
+    {
+      "allow_cached_keys": false,
+      "allow_dynamic_platform": true,
+      "allow_smt": true,
       "image_release_sha256": "085fe3a8c9d93690d18a673b323bd48434ead06db26eb15ef93a7bd263868dde",
       "release_sha256": "76f828884156a0272ea5259510d2e3492c17c9a0ed135444a055998832a06dd1",
       "sequence": 10,
