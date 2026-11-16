@@ -29,6 +29,16 @@
       "sequence": 9,
       "source_commit": "8945e57a151ce35cf9362cf41d82ff365331108d",
       "tag": "v0.2.3"
+    },
+    {
+      "allow_cached_keys": false,
+      "allow_dynamic_platform": true,
+      "allow_smt": true,
+      "image_release_sha256": "b75dc3c5d5bc0dfb2c3dbf238dc2acd1866dfa29724f0991334d9f9998d23f2a",
+      "release_sha256": "43aeffdbd33ca657956c488699acacbb436c0d4e71544fa6d6fa21730c763e2a",
+      "sequence": 12,
+      "source_commit": "211a383a9ffa0adca15f430f8fa96d6c2f4ae43c",
+      "tag": "v0.2.6"
     }
   ],
   "endpoint": "wss://api.azellabs.io/v1/session",
