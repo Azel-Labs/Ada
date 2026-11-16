@@ -52,7 +52,10 @@ async fn chat(
         return Err(ApiError::Forbidden);
     }
     let model = ChatService::resolve_model(input.model.as_deref(), admission.plan)?;
-    let mut messages = vec![json!({"role":"system", "content":state.config.system_prompt})];
+    let mut messages = vec![json!({
+        "role": "system",
+        "content": input.system_prompt(&state.config.system_prompt),
+    })];
     for message in &input.messages {
         messages.push(serde_json::to_value(message).map_err(|_| ApiError::Unavailable)?);
     }
